@@ -1,9 +1,11 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "senior-care-compass",
+  "main": "worker.js",
   "compatibility_date": "2026-09-27",
   "assets": {
     "directory": "./public",
+    "binding": "ASSETS",
     "html_handling": "auto-trailing-slash"
   }
 }
