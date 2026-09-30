@@ -667,3 +667,18 @@ body.high-contrast .tribute-living-note .tribute-family{color:#fff!important}
   .tribute-wide-img{aspect-ratio:3/2}
   .tribute-living-note{padding:14px 14px;font-size:.96rem}
 }
+
+
+/* Important Numbers — bilingual senior-friendly tap-to-call section */
+.important-numbers{margin:34px 0;padding:clamp(18px,3vw,28px);border:1px solid #d7e5e6;border-radius:24px;background:linear-gradient(135deg,#f7fbfb,#fffdf8);box-shadow:var(--shadow)}
+.number-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.number-grid article{padding:18px;border:1px solid #dbe6e7;border-radius:18px;background:#fff}
+.number-grid h3{margin:0 0 10px;color:var(--navy);font-family:Georgia,"Times New Roman",serif}
+.number-grid a{display:grid;grid-template-columns:minmax(145px,.7fr) 1fr;gap:12px;align-items:center;padding:12px 0;border-top:1px solid #e8eeee;text-decoration:none;color:#394653}
+.number-grid a:first-of-type{border-top:0}
+.number-grid a strong{font-size:1.08rem;color:#075f69}
+.number-grid a:hover strong,.number-grid a:focus strong{text-decoration:underline}
+.number-safety{margin:16px 0 0;padding:14px 16px;border-left:4px solid #d6a23d;border-radius:0 14px 14px 0;background:#fff8e8;color:#4b5563;line-height:1.55}
+body.high-contrast .important-numbers,body.high-contrast .number-grid article,body.high-contrast .number-safety{background:#000;color:#fff;border-color:#fff}
+body.high-contrast .number-grid h3,body.high-contrast .number-grid a,body.high-contrast .number-grid a strong{color:#fff}
+@media(max-width:760px){.number-grid{grid-template-columns:1fr}.number-grid a{grid-template-columns:1fr;gap:3px;padding:13px 0}.number-grid a strong{font-size:1.22rem}}
