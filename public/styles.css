@@ -606,3 +606,64 @@ body.high-contrast .tribute-mission p{color:#fff}
   }
   .tribute-mission-icon{margin:0 auto}
 }
+
+
+/* Approved horizontal living tribute graphic - 2026-09-30 */
+.tribute-section{
+  display:block;
+  margin:34px 0 46px;
+  padding:clamp(16px,3vw,28px);
+  background:linear-gradient(135deg,#fffdf8,#fbfcfb);
+  border:1px solid #ead9a8;
+  border-radius:28px;
+  box-shadow:var(--shadow);
+}
+.tribute-wide-wrap{display:grid;gap:16px}
+.tribute-wide-wrap>.tribute-label{justify-self:center;align-self:auto}
+.tribute-wide-figure{
+  margin:0;
+  width:100%;
+  overflow:hidden;
+  border-radius:24px;
+  border:3px solid #fff;
+  background:#fffaf0;
+  box-shadow:0 18px 42px rgba(38,48,65,.16);
+}
+.tribute-wide-img{
+  display:block;
+  width:100%;
+  height:auto;
+  aspect-ratio:3/2;
+  object-fit:cover;
+}
+.tribute-living-note{
+  max-width:900px;
+  margin:0 auto;
+  padding:16px 18px;
+  border-left:4px solid #d6a23d;
+  border-radius:0 16px 16px 0;
+  background:#fffaf0;
+  color:#4b5563;
+  line-height:1.6;
+}
+.tribute-living-note>strong{
+  display:block;
+  margin-bottom:6px;
+  color:var(--navy);
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:1.35rem;
+}
+.tribute-living-note p{margin:0 0 8px}
+.tribute-living-note .tribute-family{
+  margin:4px 0 0!important;
+  color:#5f6670!important;
+}
+body.high-contrast .tribute-living-note{background:#000;color:#fff;border-color:#fff}
+body.high-contrast .tribute-living-note>strong,
+body.high-contrast .tribute-living-note .tribute-family{color:#fff!important}
+@media(max-width:700px){
+  .tribute-section{padding:12px;border-radius:20px}
+  .tribute-wide-figure{border-radius:18px}
+  .tribute-wide-img{aspect-ratio:3/2}
+  .tribute-living-note{padding:14px 14px;font-size:.96rem}
+}
