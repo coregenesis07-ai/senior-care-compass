@@ -682,3 +682,12 @@ body.high-contrast .tribute-living-note .tribute-family{color:#fff!important}
 body.high-contrast .important-numbers,body.high-contrast .number-grid article,body.high-contrast .number-safety{background:#000;color:#fff;border-color:#fff}
 body.high-contrast .number-grid h3,body.high-contrast .number-grid a,body.high-contrast .number-grid a strong{color:#fff}
 @media(max-width:760px){.number-grid{grid-template-columns:1fr}.number-grid a{grid-template-columns:1fr;gap:3px;padding:13px 0}.number-grid a strong{font-size:1.22rem}}
+
+/* Optional publication promotion */
+#printable-activities{scroll-margin-top:100px;margin-block:24px}
+.moments-artwork{margin:1rem auto;max-width:560px;text-align:center}
+.moments-artwork img{display:block;width:100%;height:auto;border-radius:12px}
+.moments-artwork figcaption{font-size:1rem;margin-top:.5rem}
+#printable-activities .local-service-card{min-width:0;overflow-wrap:anywhere}
+#printable-activities .btn{white-space:normal;min-height:44px;text-align:center}
+#printable-activities a:focus-visible{outline:3px solid currentColor;outline-offset:3px}
