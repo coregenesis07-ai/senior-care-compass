@@ -20,3 +20,25 @@ for(const [path,lang] of [['/index.html','en'],['/es.html','es']]){
   expect(results.violations.filter(v=>v.impact==='critical')).toEqual([]);
  });
 }
+
+for(const [path,lang] of [['/index.html','en'],['/es.html','es']]){
+ test(lang+' mobile CMS search results and publication dates',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.route('**/api/providers?*',route=>route.fulfill({json:{
+   location:{zip:'37087',city:'Lebanon',state:'TN'},
+   hospitals:[{name:'Test Hospital',address:'Lebanon, TN 37087',phone:'6155550100'}],
+   nursingHomes:[],medicalEquipment:[],clinics:[],pharmacies:[],vision:[],
+   sourcesAvailable:{zip:true,cmsHospitals:true,cmsNursingHomes:true,cmsMedicalEquipment:true,nppes:true},
+   cmsSnapshotReleases:{hospitals:'2026-11-12',nursingHomes:'2026-10-28',medicalEquipment:'2026-11-22'}
+  }}));
+  await page.goto('http://127.0.0.1:8080'+path);
+  await page.locator('#zipInput').fill('37087');
+  await page.locator('#zipForm').evaluate(form=>form.requestSubmit());
+  await expect(page.locator('#hospitalResults')).toContainText('Test Hospital');
+  await expect(page.locator('#locationSummary')).toBeVisible();
+  await expect(page.locator('#locationSummary')).toContainText(lang==='en'?'CMS published data:':'Datos publicados por CMS:');
+  await expect(page.locator('#locationSummary')).toContainText('2026-11-12');
+  await expect(page.locator('#nursingResults a[href="https://www.medicare.gov/care-compare/"]')).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
+ });
+}
