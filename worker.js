@@ -193,7 +193,7 @@ function dedupe(items) {
   return out;
 }
 
-function splitNpi(records, zip) {
+function splitNpi(records, zip, state) {
   const clinics = [];
   const pharmacies = [];
   const vision = [];
@@ -203,7 +203,7 @@ function splitNpi(records, zip) {
 
     // NPPES may match a different address on the record. Only expose the
     // LOCATION address when it truly matches the ZIP the user entered.
-    if (item.zipCode !== zip) continue;
+    if (item.zipCode !== zip || !state || String(npiAddress(record).state || "").toUpperCase() !== state.toUpperCase() || npiAddress(record).address_purpose !== "LOCATION") continue;
 
     const tax = item.taxonomyText;
 
@@ -274,12 +274,14 @@ async function handleProviders(request) {
 
   const hospitals = Array.isArray(hospitalData?.results)
     ? hospitalData.results
+        .filter(row => String(row.zip_code || "").slice(0, 5) === zip && location.state && String(row.state || "").toUpperCase() === location.state.toUpperCase())
         .map(normalizeHospital)
         .filter((x) => x.name)
     : [];
 
   const nursingHomes = Array.isArray(nursingData?.results)
     ? nursingData.results
+        .filter(row => String(row.zip_code || "").slice(0, 5) === zip && location.state && String(row.state || "").toUpperCase() === location.state.toUpperCase())
         .map(normalizeNursing)
         .filter((x) => x.name)
     : [];
@@ -287,6 +289,7 @@ async function handleProviders(request) {
   const medicalEquipment = Array.isArray(dmeData?.results)
     ? dedupe(
         dmeData.results
+          .filter(row => String(row.practicezip9code || "").slice(0, 5) === zip && location.state && String(row.practicestate || "").toUpperCase() === location.state.toUpperCase())
           .map(normalizeDme)
           .filter((x) => x.name)
       ).slice(0, 10)
@@ -296,7 +299,7 @@ async function handleProviders(request) {
     ? npiData.results
     : [];
 
-  const { clinics, pharmacies, vision } = splitNpi(npiRecords, zip);
+  const { clinics, pharmacies, vision } = splitNpi(npiRecords, zip, location.state);
 
   if (!zipData && !hospitalData && !nursingData && !dmeData && !npiData) {
     return json(
