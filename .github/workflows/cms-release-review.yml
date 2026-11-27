@@ -24,3 +24,15 @@ jobs:
           name: cms-release-report
           path: cms-release-report.jsonl
           retention-days: 14
+      - name: Flag changed releases for maintainer review
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          rows = [json.loads(line) for line in Path('cms-release-report.jsonl').read_text().splitlines()]
+          assert len(rows) == 3
+          changed = [r['category'] for r in rows if r['reviewRequired']]
+          if changed:
+              raise SystemExit("New or ambiguous CMS releases require review: " + ", ".join(changed))
+          print("All three official download links match the validated releases.")
+          PY
