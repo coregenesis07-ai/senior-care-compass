@@ -1,0 +1,26 @@
+name: CMS release review
+on:
+  pull_request:
+    paths:
+      - 'scripts/check_cms_releases.py'
+      - '.github/workflows/cms-release-review.yml'
+  workflow_dispatch:
+  schedule:
+    - cron: '0 14 * * 1'
+permissions:
+  contents: read
+jobs:
+  catalog:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check official release metadata
+        run: |
+          python3 scripts/check_cms_releases.py > cms-release-report.jsonl
+          cat cms-release-report.jsonl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cms-release-report
+          path: cms-release-report.jsonl
+          retention-days: 14
