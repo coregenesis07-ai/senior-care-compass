@@ -5,6 +5,12 @@ for(const [path,lang] of [['/index.html','en'],['/es.html','es']]){
   await page.setViewportSize({width:390,height:844});
   await page.goto('http://127.0.0.1:8080'+path);
   await expect(page.locator('html')).toHaveAttribute('lang',lang);
+  const emergency=page.locator('.emergency-panel');
+  const call=emergency.getByRole('link',{name:lang==='en'?'Call 911':'Llamar al 911',exact:true});
+  await expect(call).toBeVisible();
+  await expect(call).toHaveAttribute('href','tel:911');
+  expect((await call.boundingBox()).height).toBeGreaterThanOrEqual(48);
+  await expect(emergency.locator('.emergency-icon svg')).toBeVisible();
   await expect(page.locator('#zipInput')).toBeVisible();
   await page.locator('#zipInput').fill('37087');
   await expect(page.locator('#zipInput')).toHaveValue('37087');
