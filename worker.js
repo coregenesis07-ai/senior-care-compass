@@ -5,7 +5,7 @@ const JSON_HEADERS = {
 };
 
 function json(data, status = 200) {
-  return new Response(JSON.stringify(data), { status, headers: JSON_HEADERS });
+  return new Response(JSON.stringify(data), { status, headers: { ...JSON_HEADERS, "cache-control": "no-store" } });
 }
 
 async function safeFetchJson(url, timeoutMs = 9000) {
@@ -133,7 +133,6 @@ function npiAddress(record) {
   const addresses = Array.isArray(record.addresses) ? record.addresses : [];
   return (
     addresses.find((a) => a.address_purpose === "LOCATION") ||
-    addresses[0] ||
     {}
   );
 }
@@ -203,7 +202,7 @@ function splitNpi(records, zip, state) {
 
     // NPPES may match a different address on the record. Only expose the
     // LOCATION address when it truly matches the ZIP the user entered.
-    if (item.zipCode !== zip || !state || String(npiAddress(record).state || "").toUpperCase() !== state.toUpperCase() || npiAddress(record).address_purpose !== "LOCATION") continue;
+    if (item.zipCode !== zip || (state && String(npiAddress(record).state || "").toUpperCase() !== state.toUpperCase()) || npiAddress(record).address_purpose !== "LOCATION") continue;
 
     const tax = item.taxonomyText;
 
@@ -274,14 +273,14 @@ async function handleProviders(request) {
 
   const hospitals = Array.isArray(hospitalData?.results)
     ? hospitalData.results
-        .filter(row => String(row.zip_code || "").slice(0, 5) === zip && location.state && String(row.state || "").toUpperCase() === location.state.toUpperCase())
+        .filter(row => String(row.zip_code || "").slice(0, 5) === zip && (!location.state || String(row.state || "").toUpperCase() === location.state.toUpperCase()))
         .map(normalizeHospital)
         .filter((x) => x.name)
     : [];
 
   const nursingHomes = Array.isArray(nursingData?.results)
     ? nursingData.results
-        .filter(row => String(row.zip_code || "").slice(0, 5) === zip && location.state && String(row.state || "").toUpperCase() === location.state.toUpperCase())
+        .filter(row => String(row.zip_code || "").slice(0, 5) === zip && (!location.state || String(row.state || "").toUpperCase() === location.state.toUpperCase()))
         .map(normalizeNursing)
         .filter((x) => x.name)
     : [];
@@ -289,7 +288,7 @@ async function handleProviders(request) {
   const medicalEquipment = Array.isArray(dmeData?.results)
     ? dedupe(
         dmeData.results
-          .filter(row => String(row.practicezip9code || "").slice(0, 5) === zip && location.state && String(row.practicestate || "").toUpperCase() === location.state.toUpperCase())
+          .filter(row => String(row.practicezip9code || "").slice(0, 5) === zip && (!location.state || String(row.practicestate || "").toUpperCase() === location.state.toUpperCase()))
           .map(normalizeDme)
           .filter((x) => x.name)
       ).slice(0, 10)
@@ -301,7 +300,7 @@ async function handleProviders(request) {
 
   const { clinics, pharmacies, vision } = splitNpi(npiRecords, zip, location.state);
 
-  if (!zipData && !hospitalData && !nursingData && !dmeData && !npiData) {
+  if (![hospitalData, nursingData, dmeData, npiData].some(data => Array.isArray(data?.results))) {
     return json(
       {
         error:
@@ -347,7 +346,7 @@ export default {
       if (request.method === "OPTIONS") {
         return new Response(null, {
           status: 204,
-          headers: JSON_HEADERS
+          headers: { ...JSON_HEADERS, "cache-control": "no-store" }
         });
       }
 
