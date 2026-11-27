@@ -1,0 +1,19 @@
+name: Directory checks
+on:
+  pull_request:
+  push:
+    branches: [main, fix/directory-reliability-phase1]
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check public/app.js
+      - run: node --check worker.js
+      - run: node --test tests/directory.test.mjs
