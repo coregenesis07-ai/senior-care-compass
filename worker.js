@@ -320,11 +320,11 @@ async function handleProviders(request) {
     vision,
     medicalEquipment,
     sourcesAvailable: {
-      zip: Boolean(zipData),
-      cmsHospitals: Boolean(hospitalData),
-      cmsNursingHomes: Boolean(nursingData),
-      cmsMedicalEquipment: Boolean(dmeData),
-      nppes: Boolean(npiData)
+      zip: Boolean(location.state),
+      cmsHospitals: Array.isArray(hospitalData?.results),
+      cmsNursingHomes: Array.isArray(nursingData?.results),
+      cmsMedicalEquipment: Array.isArray(dmeData?.results),
+      nppes: Array.isArray(npiData?.results)
     },
     notices: [
       "Results are exact-ZIP matches, not a radius search.",
