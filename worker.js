@@ -8,7 +8,8 @@ function json(data, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { ...JSON_HEADERS, "cache-control": "no-store" } });
 }
 
-async function safeFetchJson(url, timeoutMs = 9000) {
+async function safeFetchJson(url, timeoutMs = 9000, source = "upstream") {
+  const started = Date.now();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -21,9 +22,17 @@ async function safeFetchJson(url, timeoutMs = 9000) {
       signal: controller.signal
     });
 
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
+    if (!res.ok) {
+      console.warn("provider_upstream", { source, status: res.status, elapsedMs: Date.now() - started });
+      return null;
+    }
+    const data = await res.json();
+    if (source.startsWith("cms") && !Array.isArray(data?.results)) {
+      console.warn("provider_upstream", { source, issue: "unexpected_response_shape", elapsedMs: Date.now() - started });
+    }
+    return data;
+  } catch (error) {
+    console.warn("provider_upstream", { source, issue: controller.signal.aborted ? "timeout" : error instanceof SyntaxError ? "invalid_json" : "fetch_failed", elapsedMs: Date.now() - started });
     return null;
   } finally {
     clearTimeout(timer);
@@ -253,11 +262,11 @@ async function handleProviders(request) {
     "https://api.zippopotam.us/us/" + encodeURIComponent(zip);
 
   const [zipData, hospitalData, nursingData, dmeData, npiData] = await Promise.all([
-    safeFetchJson(zipUrl),
-    safeFetchJson(cmsUrl("xubh-q36u", zip)),
-    safeFetchJson(cmsUrl("4pq5-n9py", zip)),
-    safeFetchJson(cmsDmeUrl(zip)),
-    safeFetchJson(npiUrl(zip))
+    safeFetchJson(zipUrl, 9000, "zip"),
+    safeFetchJson(cmsUrl("xubh-q36u", zip), 15000, "cmsHospitals"),
+    safeFetchJson(cmsUrl("4pq5-n9py", zip), 15000, "cmsNursingHomes"),
+    safeFetchJson(cmsDmeUrl(zip), 15000, "cmsMedicalEquipment"),
+    safeFetchJson(npiUrl(zip), 9000, "nppes")
   ]);
 
   const place =
