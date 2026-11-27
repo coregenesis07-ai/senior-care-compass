@@ -253,7 +253,27 @@ function splitNpi(records, zip, state) {
   };
 }
 
-async function handleProviders(request) {
+async function readCmsSnapshot(request, env, zip) {
+  if (!env?.ASSETS) return null;
+  try {
+    const read = async path => {
+      const response = await env.ASSETS.fetch(new Request(new URL(path, request.url)));
+      if (!response.ok) return null;
+      return response.json();
+    };
+    const manifest = await read("/cms-data/manifest.json");
+    if (manifest?.format !== 1 || !manifest.releases || !manifest.counts) return null;
+    const categories = ["hospitals", "nursingHomes", "medicalEquipment"];
+    // A missing shard is not evidence of an empty ZIP.
+    const shard = await read("/cms-data/" + zip.slice(0, 3) + ".json");
+    if (!shard || typeof shard !== "object" || Array.isArray(shard)) return null;
+    const rows = shard[zip] || {};
+    if (categories.some(k => !/^\d{4}-\d{2}-\d{2}$/.test(manifest.releases[k] || "") || (rows[k] !== undefined && !Array.isArray(rows[k])))) return null;
+    return { rows, releases: manifest.releases };
+  } catch { return null; }
+}
+
+async function handleProviders(request, env) {
   const requestUrl = new URL(request.url);
   const zip = (requestUrl.searchParams.get("zip") || "").trim();
 
@@ -265,13 +285,23 @@ async function handleProviders(request) {
     "https://api.zippopotam.us/us/" + encodeURIComponent(zip);
 
   const diagnostics = {};
-  const [zipData, hospitalData, nursingData, dmeData, npiData] = await Promise.all([
+  let [zipData, hospitalData, nursingData, dmeData, npiData, snapshot] = await Promise.all([
     safeFetchJson(zipUrl, 9000, "zip", diagnostics),
     safeFetchJson(cmsUrl("xubh-q36u", zip), 15000, "cmsHospitals", diagnostics),
     safeFetchJson(cmsUrl("4pq5-n9py", zip), 15000, "cmsNursingHomes", diagnostics),
     safeFetchJson(cmsDmeUrl(zip), 15000, "cmsMedicalEquipment", diagnostics),
-    safeFetchJson(npiUrl(zip), 9000, "nppes", diagnostics)
+    safeFetchJson(npiUrl(zip), 9000, "nppes", diagnostics),
+    readCmsSnapshot(request, env, zip)
   ]);
+  const cmsSnapshotReleases = {};
+  const fallback = (data, category) => {
+    if (Array.isArray(data?.results) || !snapshot) return data;
+    cmsSnapshotReleases[category] = snapshot.releases[category];
+    return { results: snapshot.rows[category] || [] };
+  };
+  hospitalData = fallback(hospitalData, "hospitals");
+  nursingData = fallback(nursingData, "nursingHomes");
+  dmeData = fallback(dmeData, "medicalEquipment");
 
   const place =
     zipData && Array.isArray(zipData.places) ? zipData.places[0] : null;
@@ -339,6 +369,7 @@ async function handleProviders(request) {
       nppes: Array.isArray(npiData?.results)
     },
     sourceDiagnostics: diagnostics,
+    cmsSnapshotReleases,
     notices: [
       "Results are exact-ZIP matches, not a radius search.",
       "CMS/NPPES listings do not guarantee current hours, availability, licensure, credentials, insurance participation, or eligibility.",
@@ -354,7 +385,7 @@ export default {
 
     if (url.pathname === "/api/providers") {
       if (request.method === "GET") {
-        return handleProviders(request);
+        return handleProviders(request, env);
       }
 
       if (request.method === "OPTIONS") {
