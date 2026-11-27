@@ -1,0 +1,35 @@
+name: Verify Cloudflare CMS asset preparation
+on:
+  pull_request:
+    paths:
+      - 'scripts/**'
+      - 'wrangler.jsonc'
+      - '.github/workflows/cms-build-assets.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Execute exact Wrangler build command
+        run: bash scripts/prepare_cms_assets.sh
+      - name: Verify deployable assets
+        run: |
+          python - <<'PY'
+          import json, pathlib
+          p=pathlib.Path('public/cms-data')
+          m=json.loads((p/'manifest.json').read_text())
+          assert m['format']==1
+          assert len(list(p.glob('*.json')))==m['shardCount']+1
+          assert len(list(pathlib.Path('public').rglob('*')))<20000
+          assert all(f.stat().st_size<25*1024*1024 for f in p.glob('*.json'))
+          d=json.loads((p/'370.json').read_text())['37087']
+          assert all(d.get(k) for k in ('hospitals','nursingHomes','medicalEquipment'))
+          print(m)
+          PY

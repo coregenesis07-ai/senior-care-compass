@@ -18,6 +18,7 @@
 <link rel="alternate" hreflang="es" href="https://seniorcarecompassusa.org/es.html"/>
 <link rel="alternate" hreflang="x-default" href="https://seniorcarecompassusa.org/"/>
 <link rel="stylesheet" href="styles.css"/>
+<link rel="icon" type="image/svg+xml" href="/assets/senior-care-compass-lighthouse-logo.svg"/>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"WebApplication","name":"Senior Care Compass","applicationCategory":"HealthApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Guía informativa gratuita y buscador nacional de recursos para adultos mayores, cuidadores y familias.","url":"https://seniorcarecompassusa.org/es.html","inLanguage":"es"}
 </script>
@@ -30,7 +31,7 @@
 <section class="brand-banner" aria-label="Introducción de Senior Care Compass">
   <div class="shell brand-banner-inner">
     <a class="brand-banner-logo" href="#top" aria-label="Inicio de Senior Care Compass">
-      <img src="assets/senior-care-compass-lighthouse-logo-es.svg" alt="Senior Care Compass — Un faro de esperanza para las familias"/>
+      <img width="800" height="180" src="assets/senior-care-compass-lighthouse-logo-es.svg" alt="Senior Care Compass — Un faro de esperanza para las familias"/>
     </a>
     <div class="brand-banner-copy">
       <span class="brand-banner-eyebrow">100% GRATIS • SIN ANUNCIOS • SIN CUENTA</span>
@@ -111,11 +112,12 @@
 <main class="shell" id="main">
 
 <section class="emergency-panel" aria-labelledby="emergencyTitle">
-  <div class="emergency-icon" aria-hidden="true">!</div>
+  <div class="emergency-icon" aria-hidden="true"><svg width="40" height="40" viewBox="0 0 64 64" focusable="false" aria-hidden="true"><path fill="currentColor" d="M26 5H38V21L52 13L58 24L44 32L58 40L52 51L38 43V59H26V43L12 51L6 40L20 32L6 24L12 13L26 21Z"/></svg></div>
   <div class="emergency-main">
     <span class="kicker kicker-red">Atención inmediata</span>
     <h2 id="emergencyTitle">Emergencia — qué hacer ahora mismo</h2>
     <p>Si hay dificultad para respirar, dolor de pecho, posible derrame cerebral, una caída grave, confusión repentina intensa u otro peligro inmediato, llame al 911. No conduzca usted mismo en una emergencia.</p>
+    <a href="tel:911" style="display:inline-flex;align-items:center;justify-content:center;min-height:48px;margin-top:16px;padding:12px 24px;background:#b91c1c;color:#fff;border-radius:12px;font-weight:800;text-decoration:underline">Llamar al 911</a>
     <div class="emergency-grid">
       <article><h3>FAST para detectar un derrame cerebral</h3><p>Rostro caído, debilidad en un brazo o dificultad para hablar: es tiempo de llamar al 911.</p></article>
       <article><h3>Caída en el hogar</h3><p>No levante a una persona sin ayuda si tiene dolor intenso o una posible lesión. Manténgala segura e informe a los paramédicos sobre anticoagulantes o medicamentos importantes.</p></article>
@@ -147,7 +149,9 @@
     <section class="provider-section"><div class="provider-title"><h3>Hospitales</h3><span>Datos de Medicare/CMS</span></div><div id="hospitalResults" class="result-cards"></div></section>
     <section class="provider-section"><div class="provider-title"><h3>Centros de enfermería / rehabilitación</h3><span>Datos de proveedores certificados por CMS</span></div><div id="nursingResults" class="result-cards"></div></section>
     <section class="provider-section"><div class="provider-title"><h3>Clínicas y centros de salud</h3><span>NPPES NPI Registry</span></div><div id="clinicResults" class="result-cards"></div></section>
+    <section class="provider-section"><div class="provider-title"><h3>Salud visual, optometría y anteojos</h3><span>NPPES NPI Registry</span></div><div id="visionResults" class="result-cards"></div></section>
     <section class="provider-section"><div class="provider-title"><h3>Farmacias</h3><span>NPPES NPI Registry</span></div><div id="pharmacyResults" class="result-cards"></div></section>
+    <section class="provider-section featured-provider-section"><div class="provider-title"><h3>Equipos y suministros médicos de Medicare</h3><span>Directorio oficial de proveedores de CMS</span></div><p class="provider-note">Muestra proveedores y artículos incluidos en los datos de Medicare. Confirme el artículo exacto, la cobertura, la disponibilidad y si el proveedor acepta la asignación de Medicare antes de comprar o alquilar.</p><div id="dmeResults" class="result-cards"></div></section>
   </div>
   <div class="official-links">
     <a href="https://www.medicare.gov/care-compare/" target="_blank" rel="noopener">Medicare Care Compare ↗</a>
@@ -226,7 +230,7 @@
     <span class="tribute-label">Por qué creamos Senior Care Compass</span>
     <h2 id="tributeTitle" class="sr-only">Honrando a Nuestra Madre</h2>
     <figure class="tribute-wide-figure">
-      <img class="tribute-wide-img" src="/assets/mom-tribute-horizontal-v2.jpg" alt="Un homenaje en vida a nuestra madre con su retrato, la bandera de Puerto Rico y un faro, dedicado con amor por sus hijos Al y Edwin Roman"/>
+      <img loading="lazy" decoding="async" class="tribute-wide-img" src="/assets/mom-tribute-horizontal-v2.jpg" alt="Un homenaje en vida a nuestra madre con su retrato, la bandera de Puerto Rico y un faro, dedicado con amor por sus hijos Al y Edwin Roman"/>
     </figure>
     <div class="tribute-living-note">
       <strong>Un homenaje en vida</strong>

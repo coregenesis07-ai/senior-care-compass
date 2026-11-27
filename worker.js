@@ -5,10 +5,11 @@ const JSON_HEADERS = {
 };
 
 function json(data, status = 200) {
-  return new Response(JSON.stringify(data), { status, headers: JSON_HEADERS });
+  return new Response(JSON.stringify(data), { status, headers: { ...JSON_HEADERS, "cache-control": "no-store" } });
 }
 
-async function safeFetchJson(url, timeoutMs = 9000) {
+async function safeFetchJson(url, timeoutMs = 9000, source = "upstream", diagnostics = {}) {
+  const started = Date.now();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -21,9 +22,20 @@ async function safeFetchJson(url, timeoutMs = 9000) {
       signal: controller.signal
     });
 
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
+    diagnostics[source] = { status: res.status };
+    if (!res.ok) {
+      console.warn("provider_upstream", { source, status: res.status, elapsedMs: Date.now() - started });
+      return null;
+    }
+    const data = await res.json();
+    if (source.startsWith("cms") && !Array.isArray(data?.results)) {
+      diagnostics[source].issue = "unexpected_response_shape";
+      console.warn("provider_upstream", { source, issue: "unexpected_response_shape", elapsedMs: Date.now() - started });
+    }
+    return data;
+  } catch (error) {
+    diagnostics[source] = { issue: controller.signal.aborted ? "timeout" : error instanceof SyntaxError ? "invalid_json" : "fetch_failed" };
+    console.warn("provider_upstream", { source, issue: controller.signal.aborted ? "timeout" : error instanceof SyntaxError ? "invalid_json" : "fetch_failed", elapsedMs: Date.now() - started });
     return null;
   } finally {
     clearTimeout(timer);
@@ -133,7 +145,6 @@ function npiAddress(record) {
   const addresses = Array.isArray(record.addresses) ? record.addresses : [];
   return (
     addresses.find((a) => a.address_purpose === "LOCATION") ||
-    addresses[0] ||
     {}
   );
 }
@@ -203,7 +214,7 @@ function splitNpi(records, zip, state) {
 
     // NPPES may match a different address on the record. Only expose the
     // LOCATION address when it truly matches the ZIP the user entered.
-    if (item.zipCode !== zip || !state || String(npiAddress(record).state || "").toUpperCase() !== state.toUpperCase() || npiAddress(record).address_purpose !== "LOCATION") continue;
+    if (item.zipCode !== zip || (state && String(npiAddress(record).state || "").toUpperCase() !== state.toUpperCase()) || npiAddress(record).address_purpose !== "LOCATION") continue;
 
     const tax = item.taxonomyText;
 
@@ -242,7 +253,27 @@ function splitNpi(records, zip, state) {
   };
 }
 
-async function handleProviders(request) {
+async function readCmsSnapshot(request, env, zip) {
+  if (!env?.ASSETS) return null;
+  try {
+    const read = async path => {
+      const response = await env.ASSETS.fetch(new Request(new URL(path, request.url)));
+      if (!response.ok) return null;
+      return response.json();
+    };
+    const manifest = await read("/cms-data/manifest.json");
+    if (manifest?.format !== 1 || !manifest.releases || !manifest.counts) return null;
+    const categories = ["hospitals", "nursingHomes", "medicalEquipment"];
+    // A missing shard is not evidence of an empty ZIP.
+    const shard = await read("/cms-data/" + zip.slice(0, 3) + ".json");
+    if (!shard || typeof shard !== "object" || Array.isArray(shard)) return null;
+    const rows = shard[zip] || {};
+    if (categories.some(k => !/^\d{4}-\d{2}-\d{2}$/.test(manifest.releases[k] || "") || (rows[k] !== undefined && !Array.isArray(rows[k])))) return null;
+    return { rows, releases: manifest.releases };
+  } catch { return null; }
+}
+
+async function handleProviders(request, env) {
   const requestUrl = new URL(request.url);
   const zip = (requestUrl.searchParams.get("zip") || "").trim();
 
@@ -253,13 +284,24 @@ async function handleProviders(request) {
   const zipUrl =
     "https://api.zippopotam.us/us/" + encodeURIComponent(zip);
 
-  const [zipData, hospitalData, nursingData, dmeData, npiData] = await Promise.all([
-    safeFetchJson(zipUrl),
-    safeFetchJson(cmsUrl("xubh-q36u", zip)),
-    safeFetchJson(cmsUrl("4pq5-n9py", zip)),
-    safeFetchJson(cmsDmeUrl(zip)),
-    safeFetchJson(npiUrl(zip))
+  const diagnostics = {};
+  let [zipData, hospitalData, nursingData, dmeData, npiData, snapshot] = await Promise.all([
+    safeFetchJson(zipUrl, 9000, "zip", diagnostics),
+    safeFetchJson(cmsUrl("xubh-q36u", zip), 15000, "cmsHospitals", diagnostics),
+    safeFetchJson(cmsUrl("4pq5-n9py", zip), 15000, "cmsNursingHomes", diagnostics),
+    safeFetchJson(cmsDmeUrl(zip), 15000, "cmsMedicalEquipment", diagnostics),
+    safeFetchJson(npiUrl(zip), 9000, "nppes", diagnostics),
+    readCmsSnapshot(request, env, zip)
   ]);
+  const cmsSnapshotReleases = {};
+  const fallback = (data, category) => {
+    if (Array.isArray(data?.results) || !snapshot) return data;
+    cmsSnapshotReleases[category] = snapshot.releases[category];
+    return { results: snapshot.rows[category] || [] };
+  };
+  hospitalData = fallback(hospitalData, "hospitals");
+  nursingData = fallback(nursingData, "nursingHomes");
+  dmeData = fallback(dmeData, "medicalEquipment");
 
   const place =
     zipData && Array.isArray(zipData.places) ? zipData.places[0] : null;
@@ -274,14 +316,14 @@ async function handleProviders(request) {
 
   const hospitals = Array.isArray(hospitalData?.results)
     ? hospitalData.results
-        .filter(row => String(row.zip_code || "").slice(0, 5) === zip && location.state && String(row.state || "").toUpperCase() === location.state.toUpperCase())
+        .filter(row => String(row.zip_code || "").slice(0, 5) === zip && (!location.state || String(row.state || "").toUpperCase() === location.state.toUpperCase()))
         .map(normalizeHospital)
         .filter((x) => x.name)
     : [];
 
   const nursingHomes = Array.isArray(nursingData?.results)
     ? nursingData.results
-        .filter(row => String(row.zip_code || "").slice(0, 5) === zip && location.state && String(row.state || "").toUpperCase() === location.state.toUpperCase())
+        .filter(row => String(row.zip_code || "").slice(0, 5) === zip && (!location.state || String(row.state || "").toUpperCase() === location.state.toUpperCase()))
         .map(normalizeNursing)
         .filter((x) => x.name)
     : [];
@@ -289,7 +331,7 @@ async function handleProviders(request) {
   const medicalEquipment = Array.isArray(dmeData?.results)
     ? dedupe(
         dmeData.results
-          .filter(row => String(row.practicezip9code || "").slice(0, 5) === zip && location.state && String(row.practicestate || "").toUpperCase() === location.state.toUpperCase())
+          .filter(row => String(row.practicezip9code || "").slice(0, 5) === zip && (!location.state || String(row.practicestate || "").toUpperCase() === location.state.toUpperCase()))
           .map(normalizeDme)
           .filter((x) => x.name)
       ).slice(0, 10)
@@ -301,7 +343,7 @@ async function handleProviders(request) {
 
   const { clinics, pharmacies, vision } = splitNpi(npiRecords, zip, location.state);
 
-  if (!zipData && !hospitalData && !nursingData && !dmeData && !npiData) {
+  if (![hospitalData, nursingData, dmeData, npiData].some(data => Array.isArray(data?.results))) {
     return json(
       {
         error:
@@ -326,6 +368,8 @@ async function handleProviders(request) {
       cmsMedicalEquipment: Array.isArray(dmeData?.results),
       nppes: Array.isArray(npiData?.results)
     },
+    sourceDiagnostics: diagnostics,
+    cmsSnapshotReleases,
     notices: [
       "Results are exact-ZIP matches, not a radius search.",
       "CMS/NPPES listings do not guarantee current hours, availability, licensure, credentials, insurance participation, or eligibility.",
@@ -341,13 +385,13 @@ export default {
 
     if (url.pathname === "/api/providers") {
       if (request.method === "GET") {
-        return handleProviders(request);
+        return handleProviders(request, env);
       }
 
       if (request.method === "OPTIONS") {
         return new Response(null, {
           status: 204,
-          headers: JSON_HEADERS
+          headers: { ...JSON_HEADERS, "cache-control": "no-store" }
         });
       }
 

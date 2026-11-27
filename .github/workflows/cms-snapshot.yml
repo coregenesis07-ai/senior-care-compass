@@ -1,0 +1,33 @@
+name: Validate CMS snapshot candidate
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/build_cms_snapshot.py'
+      - '.github/workflows/cms-snapshot.yml'
+permissions:
+  contents: read
+jobs:
+  candidate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download official CMS release files
+        run: |
+          mkdir -p "$RUNNER_TEMP/cms"
+          curl --fail --location --retry 2 --max-time 180 'https://data.cms.gov/provider-data/sites/default/files/resources/d3bf87c5505155f549d603688414f3c6_1793059553/Hospital_General_Information_2.csv' -o "$RUNNER_TEMP/cms/hospitals.csv"
+          curl --fail --location --retry 2 --max-time 180 'https://data.cms.gov/provider-data/sites/default/files/resources/0970c657767e40f8521187d02ba8d0ed_1792181744/NH_ProviderInfo_Oct2026.csv' -o "$RUNNER_TEMP/cms/nursing.csv"
+          curl --fail --location --retry 2 --max-time 180 'https://data.cms.gov/provider-data/sites/default/files/resources/3b76abb9b6f610373563b5ef08bb0d81_1795306515/Medical-Equipment-Suppliers.csv' -o "$RUNNER_TEMP/cms/equipment.csv"
+      - name: Build and inspect candidate
+        run: |
+          python scripts/build_cms_snapshot.py --hospitals "$RUNNER_TEMP/cms/hospitals.csv" --hospitals-release 2026-11-12 --nursingHomes "$RUNNER_TEMP/cms/nursing.csv" --nursingHomes-release 2026-10-28 --medicalEquipment "$RUNNER_TEMP/cms/equipment.csv" --medicalEquipment-release 2026-11-22 --output "$RUNNER_TEMP/cms-candidate"
+          cat "$RUNNER_TEMP/cms-candidate/manifest.json"
+          du -sh "$RUNNER_TEMP/cms-candidate"
+          find "$RUNNER_TEMP/cms-candidate" -type f | wc -l
+          python -c 'import json,os,pathlib; p=pathlib.Path(os.environ["RUNNER_TEMP"])/"cms-candidate"; d=json.loads((p/"37/37087.json").read_text()); assert all(d.get(k) for k in ("hospitals","nursingHomes","medicalEquipment")); print({k:len(v) for k,v in d.items()})'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cms-snapshot-candidate
+          path: ${{ runner.temp }}/cms-candidate
+          retention-days: 3

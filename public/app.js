@@ -318,7 +318,9 @@
     if (item.supplies) {
       const supplies = document.createElement('p');
       supplies.className = 'supplier-items';
-      supplies.innerHTML = '<strong>' + L.supplies + ':</strong> ' + escapeText(item.supplies);
+      const label = document.createElement('strong');
+      label.textContent = L.supplies + ':';
+      supplies.append(label, document.createTextNode(' ' + escapeText(item.supplies)));
       el.appendChild(supplies);
     }
 
@@ -376,14 +378,34 @@
       empty.className = 'empty';
       empty.textContent = emptyText;
       host.appendChild(empty);
+      const officialUrl = type === 'dme'
+        ? 'https://www.medicare.gov/medical-equipment-suppliers'
+        : ['hospital', 'nursing'].includes(type)
+          ? 'https://www.medicare.gov/care-compare/'
+          : null;
+      if (officialUrl) {
+        const link = document.createElement('a');
+        link.href = officialUrl;
+        link.textContent = type === 'dme'
+          ? (isSpanish ? 'Buscar proveedores de equipos en Medicare' : 'Search Medicare equipment suppliers')
+          : (isSpanish ? 'Buscar centros en Medicare Care Compare' : 'Search facilities on Medicare Care Compare');
+        link.className = 'provider-official-link';
+        host.appendChild(link);
+      }
       return;
     }
     items.slice(0, 8).forEach((item) => host.appendChild(card(item, type)));
   }
 
+  let searchSequence = 0;
+  let activeSearch;
   zipForm?.addEventListener('submit', async (event) => {
     event.preventDefault();
+    const sequence = ++searchSequence;
+    activeSearch?.abort();
     const zip = zipInput.value.trim();
+    providerResults.hidden = true;
+    locationSummary.hidden = true;
 
     if (!/^\d{5}$/.test(zip)) {
       setStatus(L.validZip, 'error');
@@ -393,24 +415,30 @@
 
     providerResults.hidden = true;
     locationSummary.hidden = true;
+    activeSearch = new AbortController();
     setStatus(L.searching + zip + '…', 'loading');
 
     try {
       const response = await fetch('/api/providers?zip=' + encodeURIComponent(zip), {
-        headers: { Accept: 'application/json' }
+        headers: { Accept: 'application/json' },
+        signal: activeSearch.signal
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || L.unavailable);
+      if (sequence !== searchSequence) return;
+      if (!response.ok || !data.sourcesAvailable) throw new Error(L.unavailable);
 
       const location = data.location || { zip };
       const sources = data.sourcesAvailable || {};
-      if (!sources.zip || !location.state) throw new Error(isSpanish ? 'No se pudo verificar el estado del código postal. Intente de nuevo o use los enlaces oficiales.' : 'The ZIP code state could not be verified. Try again or use the official links.');
+      const zipWarning = sources.zip ? '' : (isSpanish ? ' No se pudo verificar la ciudad o el estado; confirme la dirección con el proveedor.' : ' City and state could not be independently verified; confirm the address with the provider.');
       updateDynamicLocation(location);
       updateLocalDiscovery(location);
 
       const place = [location.city, location.state].filter(Boolean).join(', ');
       locationSummary.textContent =
-        L.resultsFor + ' ' + (place || zip) + ' ' + zip + '. ' + L.exactZip;
+        L.resultsFor + ' ' + (place || zip) + ' ' + zip + '. ' + L.exactZip + zipWarning;
+      const releaseLabels = isSpanish ? {hospitals:'Hospitales',nursingHomes:'Centros de enfermería',medicalEquipment:'Equipos médicos'} : {hospitals:'Hospitals',nursingHomes:'Nursing homes',medicalEquipment:'Medical equipment'};
+      const dated = Object.entries(data.cmsSnapshotReleases || {}).filter(([key,date]) => Object.hasOwn(releaseLabels,key) && /^\d{4}-\d{2}-\d{2}$/.test(date));
+      if (dated.length) locationSummary.textContent += (isSpanish ? ' Datos publicados por CMS: ' : ' CMS published data: ') + dated.map(([key,date]) => releaseLabels[key] + ': ' + date).join('; ') + '.';
       locationSummary.hidden = false;
 
       renderGroup('hospitalResults', data.hospitals, 'hospital', sources.cmsHospitals ? L.noHospital : L.liveHospitalFail);
@@ -421,13 +449,14 @@
       renderGroup('dmeResults', data.medicalEquipment, 'dme', sources.cmsMedicalEquipment ? L.noDme : L.liveDmeFail);
 
       providerResults.hidden = false;
-      const complete = ['cmsHospitals','cmsNursingHomes','cmsMedicalEquipment','nppes'].every(key => sources[key]);
+      const complete = ['zip','cmsHospitals','cmsNursingHomes','cmsMedicalEquipment','nppes'].every(key => sources[key]);
       setStatus(complete ? L.lookupComplete : (isSpanish ? 'Resultados parciales. Algunas fuentes no están disponibles. Use los enlaces oficiales.' : 'Partial results. Some data sources are unavailable. Use the official links.'), complete ? 'success' : 'error');
       providerResults.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (error) {
+      if (sequence !== searchSequence) return;
       updateDynamicLocation({ zip });
       updateLocalDiscovery({ zip });
-      setStatus(error.message || L.fallback, 'error');
+      setStatus(L.fallback, 'error');
       providerResults.hidden = false;
       renderGroup('hospitalResults', [], 'hospital', L.liveHospitalFail);
       renderGroup('nursingResults', [], 'nursing', L.liveNursingFail);

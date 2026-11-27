@@ -1,0 +1,40 @@
+name: Browser and accessibility checks
+on:
+  pull_request:
+  push:
+    branches: [fix/directory-reliability-phase1]
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --package-lock=false @playwright/test@1.51.1 @axe-core/playwright@4.10.2 lighthouse@12.4.0
+      - run: npx playwright install --with-deps chromium
+      - run: |
+          python3 -m http.server 8080 --directory public > /tmp/site.log 2>&1 &
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:8080/index.html >/dev/null && break; sleep 1; done
+          curl -fsS http://127.0.0.1:8080/index.html >/dev/null
+      - run: npx playwright test tests/browser.spec.cjs --reporter=list,html
+        env:
+          PLAYWRIGHT_HTML_OPEN: never
+      - if: success()
+        run: |
+          mkdir -p lighthouse-reports
+          for page in index es; do
+            npx lighthouse "http://127.0.0.1:8080/${page}.html" --chrome-flags="--headless --no-sandbox" --output=json --output-path="lighthouse-reports/${page}.json" || exit 1
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-audit
+          path: |
+            playwright-report/
+            test-results/
+            lighthouse-reports/
+          retention-days: 7
