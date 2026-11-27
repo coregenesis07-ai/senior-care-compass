@@ -7,7 +7,8 @@ SOURCES = {
 }
 MINIMUM = {"hospitals": 4000, "nursingHomes": 10000, "medicalEquipment": 40000}
 def key(s):
- return re.sub(r"[^a-z0-9]+", "_", s.strip().lower()).strip("_")
+ normalized = re.sub(r"[^a-z0-9]+", "_", s.strip().lower()).strip("_")
+ return {"city_town": "citytown"}.get(normalized, normalized)
 def build(paths, output, releases):
  if output.exists(): raise ValueError("Output must be a new candidate directory")
  grouped, counts = {}, {}
