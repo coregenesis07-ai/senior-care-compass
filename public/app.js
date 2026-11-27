@@ -378,6 +378,20 @@
       empty.className = 'empty';
       empty.textContent = emptyText;
       host.appendChild(empty);
+      const officialUrl = type === 'dme'
+        ? 'https://www.medicare.gov/medical-equipment-suppliers'
+        : ['hospital', 'nursing'].includes(type)
+          ? 'https://www.medicare.gov/care-compare/'
+          : null;
+      if (officialUrl) {
+        const link = document.createElement('a');
+        link.href = officialUrl;
+        link.textContent = type === 'dme'
+          ? (isSpanish ? 'Buscar proveedores de equipos en Medicare' : 'Search Medicare equipment suppliers')
+          : (isSpanish ? 'Buscar centros en Medicare Care Compare' : 'Search facilities on Medicare Care Compare');
+        link.className = 'provider-official-link';
+        host.appendChild(link);
+      }
       return;
     }
     items.slice(0, 8).forEach((item) => host.appendChild(card(item, type)));
