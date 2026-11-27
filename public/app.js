@@ -436,6 +436,9 @@
       const place = [location.city, location.state].filter(Boolean).join(', ');
       locationSummary.textContent =
         L.resultsFor + ' ' + (place || zip) + ' ' + zip + '. ' + L.exactZip + zipWarning;
+      const releaseLabels = isSpanish ? {hospitals:'Hospitales',nursingHomes:'Centros de enfermería',medicalEquipment:'Equipos médicos'} : {hospitals:'Hospitals',nursingHomes:'Nursing homes',medicalEquipment:'Medical equipment'};
+      const dated = Object.entries(data.cmsSnapshotReleases || {}).filter(([key,date]) => Object.hasOwn(releaseLabels,key) && /^\d{4}-\d{2}-\d{2}$/.test(date));
+      if (dated.length) locationSummary.textContent += (isSpanish ? ' Datos publicados por CMS: ' : ' CMS published data: ') + dated.map(([key,date]) => releaseLabels[key] + ': ' + date).join('; ') + '.';
       locationSummary.hidden = false;
 
       renderGroup('hospitalResults', data.hospitals, 'hospital', sources.cmsHospitals ? L.noHospital : L.liveHospitalFail);
