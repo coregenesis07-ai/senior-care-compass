@@ -1,4 +1,5 @@
 {
+  "previews": {},
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "senior-care-compass",
   "main": "worker.js",
