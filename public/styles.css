@@ -691,3 +691,10 @@ body.high-contrast .number-grid h3,body.high-contrast .number-grid a,body.high-c
 #printable-activities .local-service-card{min-width:0;overflow-wrap:anywhere}
 #printable-activities .btn{white-space:normal;min-height:44px;text-align:center}
 #printable-activities a:focus-visible{outline:3px solid currentColor;outline-offset:3px}
+
+/* Publication cards are not icon-based provider cards. */
+#printable-activities .local-service-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:16px}
+#printable-activities .local-service-card{display:flex;flex-direction:column;align-items:stretch;gap:12px;min-height:0;overflow-wrap:normal;word-break:normal;padding:18px}
+#printable-activities .local-service-card h3,#printable-activities .local-service-card p{margin:0;line-height:1.4;overflow-wrap:normal;word-break:normal}
+#printable-activities .local-service-card .btn{display:flex;align-items:center;justify-content:center;width:100%;box-sizing:border-box;margin-top:auto;overflow-wrap:normal;word-break:normal}
+@media(max-width:640px){#printable-activities .local-service-grid{grid-template-columns:minmax(0,1fr)}}
