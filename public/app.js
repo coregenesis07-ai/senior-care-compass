@@ -403,6 +403,8 @@
       if (!response.ok) throw new Error(data.error || L.unavailable);
 
       const location = data.location || { zip };
+      const sources = data.sourcesAvailable || {};
+      if (!sources.zip || !location.state) throw new Error(isSpanish ? 'No se pudo verificar el estado del código postal. Intente de nuevo o use los enlaces oficiales.' : 'The ZIP code state could not be verified. Try again or use the official links.');
       updateDynamicLocation(location);
       updateLocalDiscovery(location);
 
@@ -411,15 +413,16 @@
         L.resultsFor + ' ' + (place || zip) + ' ' + zip + '. ' + L.exactZip;
       locationSummary.hidden = false;
 
-      renderGroup('hospitalResults', data.hospitals, 'hospital', L.noHospital);
-      renderGroup('nursingResults', data.nursingHomes, 'nursing', L.noNursing);
-      renderGroup('clinicResults', data.clinics, 'clinic', L.noClinic);
-      renderGroup('visionResults', data.vision, 'vision', L.noVision);
-      renderGroup('pharmacyResults', data.pharmacies, 'pharmacy', L.noPharmacy);
-      renderGroup('dmeResults', data.medicalEquipment, 'dme', L.noDme);
+      renderGroup('hospitalResults', data.hospitals, 'hospital', sources.cmsHospitals ? L.noHospital : L.liveHospitalFail);
+      renderGroup('nursingResults', data.nursingHomes, 'nursing', sources.cmsNursingHomes ? L.noNursing : L.liveNursingFail);
+      renderGroup('clinicResults', data.clinics, 'clinic', sources.nppes ? L.noClinic : L.liveClinicFail);
+      renderGroup('visionResults', data.vision, 'vision', sources.nppes ? L.noVision : L.liveVisionFail);
+      renderGroup('pharmacyResults', data.pharmacies, 'pharmacy', sources.nppes ? L.noPharmacy : L.livePharmacyFail);
+      renderGroup('dmeResults', data.medicalEquipment, 'dme', sources.cmsMedicalEquipment ? L.noDme : L.liveDmeFail);
 
       providerResults.hidden = false;
-      setStatus(L.lookupComplete, 'success');
+      const complete = ['cmsHospitals','cmsNursingHomes','cmsMedicalEquipment','nppes'].every(key => sources[key]);
+      setStatus(complete ? L.lookupComplete : (isSpanish ? 'Resultados parciales. Algunas fuentes no están disponibles. Use los enlaces oficiales.' : 'Partial results. Some data sources are unavailable. Use the official links.'), complete ? 'success' : 'error');
       providerResults.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (error) {
       updateDynamicLocation({ zip });
