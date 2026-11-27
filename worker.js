@@ -8,7 +8,7 @@ function json(data, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { ...JSON_HEADERS, "cache-control": "no-store" } });
 }
 
-async function safeFetchJson(url, timeoutMs = 9000, source = "upstream") {
+async function safeFetchJson(url, timeoutMs = 9000, source = "upstream", diagnostics = {}) {
   const started = Date.now();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -22,16 +22,19 @@ async function safeFetchJson(url, timeoutMs = 9000, source = "upstream") {
       signal: controller.signal
     });
 
+    diagnostics[source] = { status: res.status };
     if (!res.ok) {
       console.warn("provider_upstream", { source, status: res.status, elapsedMs: Date.now() - started });
       return null;
     }
     const data = await res.json();
     if (source.startsWith("cms") && !Array.isArray(data?.results)) {
+      diagnostics[source].issue = "unexpected_response_shape";
       console.warn("provider_upstream", { source, issue: "unexpected_response_shape", elapsedMs: Date.now() - started });
     }
     return data;
   } catch (error) {
+    diagnostics[source] = { issue: controller.signal.aborted ? "timeout" : error instanceof SyntaxError ? "invalid_json" : "fetch_failed" };
     console.warn("provider_upstream", { source, issue: controller.signal.aborted ? "timeout" : error instanceof SyntaxError ? "invalid_json" : "fetch_failed", elapsedMs: Date.now() - started });
     return null;
   } finally {
@@ -261,12 +264,13 @@ async function handleProviders(request) {
   const zipUrl =
     "https://api.zippopotam.us/us/" + encodeURIComponent(zip);
 
+  const diagnostics = {};
   const [zipData, hospitalData, nursingData, dmeData, npiData] = await Promise.all([
-    safeFetchJson(zipUrl, 9000, "zip"),
-    safeFetchJson(cmsUrl("xubh-q36u", zip), 15000, "cmsHospitals"),
-    safeFetchJson(cmsUrl("4pq5-n9py", zip), 15000, "cmsNursingHomes"),
-    safeFetchJson(cmsDmeUrl(zip), 15000, "cmsMedicalEquipment"),
-    safeFetchJson(npiUrl(zip), 9000, "nppes")
+    safeFetchJson(zipUrl, 9000, "zip", diagnostics),
+    safeFetchJson(cmsUrl("xubh-q36u", zip), 15000, "cmsHospitals", diagnostics),
+    safeFetchJson(cmsUrl("4pq5-n9py", zip), 15000, "cmsNursingHomes", diagnostics),
+    safeFetchJson(cmsDmeUrl(zip), 15000, "cmsMedicalEquipment", diagnostics),
+    safeFetchJson(npiUrl(zip), 9000, "nppes", diagnostics)
   ]);
 
   const place =
@@ -334,6 +338,7 @@ async function handleProviders(request) {
       cmsMedicalEquipment: Array.isArray(dmeData?.results),
       nppes: Array.isArray(npiData?.results)
     },
+    sourceDiagnostics: diagnostics,
     notices: [
       "Results are exact-ZIP matches, not a radius search.",
       "CMS/NPPES listings do not guarantee current hours, availability, licensure, credentials, insurance participation, or eligibility.",
