@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   browser:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -23,7 +23,7 @@ jobs:
       - run: npx playwright test tests/browser.spec.cjs --reporter=list,html
         env:
           PLAYWRIGHT_HTML_OPEN: never
-      - if: always()
+      - if: success()
         run: |
           mkdir -p lighthouse-reports
           for page in index es; do
