@@ -682,3 +682,6 @@ body.high-contrast .tribute-living-note .tribute-family{color:#fff!important}
 body.high-contrast .important-numbers,body.high-contrast .number-grid article,body.high-contrast .number-safety{background:#000;color:#fff;border-color:#fff}
 body.high-contrast .number-grid h3,body.high-contrast .number-grid a,body.high-contrast .number-grid a strong{color:#fff}
 @media(max-width:760px){.number-grid{grid-template-columns:1fr}.number-grid a{grid-template-columns:1fr;gap:3px;padding:13px 0}.number-grid a strong{font-size:1.22rem}}
+
+/* Keep the local-events label readable on its light background. */
+#local-events .events-copy .kicker { color: #24465a; }
