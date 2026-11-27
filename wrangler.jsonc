@@ -19,6 +19,9 @@
       }
     }
   },
+  "build": {
+    "command": "bash scripts/prepare_cms_assets.sh"
+  },
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
