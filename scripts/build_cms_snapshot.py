@@ -35,6 +35,24 @@ def build(paths, output, releases):
    bucket = stage/z[:2]
    bucket.mkdir(exist_ok=True)
    (bucket/(z+".json")).write_text(json.dumps(data,ensure_ascii=False,separators=(",",":")),encoding="utf-8")
+  # Keep the validated per-ZIP layout and add a compact deployment candidate.
+  compact = stage/"compact"
+  compact.mkdir()
+  shards = {}
+  for z, data in grouped.items():
+   shards.setdefault(z[:3], {})[z] = data
+  sizes = []
+  for prefix, data in shards.items():
+   encoded = json.dumps(data,ensure_ascii=False,separators=(",",":")).encode("utf-8")
+   if len(encoded) > 10*1024*1024: raise ValueError("Oversized shard: "+prefix)
+   (compact/(prefix+".json")).write_bytes(encoded)
+   sizes.append(len(encoded))
+  reconstructed = {}
+  for file in compact.glob("*.json"):
+   reconstructed.update(json.loads(file.read_text(encoding="utf-8")))
+  if reconstructed != grouped: raise ValueError("Compact snapshot differs from validated ZIP records")
+  (compact/"manifest.json").write_text(json.dumps({"format":1,"counts":counts,"releases":releases,"zipCount":len(grouped),"shardCount":len(shards),"totalBytes":sum(sizes),"largestShardBytes":max(sizes)},indent=2),encoding="utf-8")
+  print((compact/"manifest.json").read_text())
   (stage/"manifest.json").write_text(json.dumps({"counts":counts,"releases":releases,"zipCount":len(grouped)},indent=2),encoding="utf-8")
   stage.rename(output)
  return counts
